@@ -56,10 +56,56 @@ sudo docker build -t bilibiliwatch-api-service .
 sudo docker run -d --name bilibiliwatch-api-service -p 8000:8000 bilibiliwatch-api-service
 ```
 
+## Docker Compose（推荐）
+以下示例默认加入 AstrBot 的外部网络 `astrbot_astrbot_network`，便于回调到机器人容器。
+如你的网络名不同，请自行替换。
+
+```yaml
+services:
+  bilibiliwatch_api:
+    image: bilibiliwatch-api-service:latest
+    container_name: bilibiliwatch-api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=Asia/Shanghai
+      - CONFIG_FILE=/app/config/config.json
+    volumes:
+      - ./config:/app/config
+    networks:
+      - astrbot_astrbot_network
+
+networks:
+  astrbot_astrbot_network:
+    external: true
+```
+
+初始化配置目录：
+```bash
+mkdir -p ./config
+```
+说明：`CONFIG_FILE` 必须是**文件路径**，不要把 `config.json` 当目录挂载，否则会报错。
+
+## 回调地址注意事项
+回调地址不能写 `0.0.0.0`（仅用于监听）。  
+如果 API 与 AstrBot 在同一 Docker 网络内，回调地址建议写：
+```
+http://astrbot:18888/bili/callback
+```
+其中 `astrbot` 为 AstrBot 服务名（compose 里的 `services` 名）。
+
 ## 说明
 - 启动后日志会输出登录 token（用于 `/api/login/*`）。
 - 扫码成功后会生成 `cookies.txt`。
 - 下载文件默认存储在 `downloads/` 目录。
+
+## GitHub Actions 自动构建（可选）
+如需推送镜像到 GHCR，请在仓库创建 `.github/workflows/docker.yml`。  
+注意镜像名必须全小写，建议使用：
+```
+ghcr.io/<用户名>/<仓库名>:latest
+```
 
 ## 简单示例
 ```bash
