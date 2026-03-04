@@ -706,6 +706,7 @@ async def download_video(
     background_tasks: BackgroundTasks,
     url: str,
     merge: bool = True,
+    audio_only: bool = False,
     filename: Optional[str] = None,
     video_quality: int = 0,
     audio_quality: int = 0
@@ -715,6 +716,7 @@ async def download_video(
     Args:
         url: B站视频链接
         merge: 是否合并视频和音频 (默认为True)
+        audio_only: 仅下载音频 (merge=false 时生效，默认为False)
         filename: 自定义文件名 (可选)
         video_quality: 视频质量索引 (默认0-最高质量)
         audio_quality: 音频质量索引 (默认0-最高质量)
@@ -753,6 +755,7 @@ async def download_video(
             "message": "任务已创建，等待开始下载...",
             "created_at": datetime.now().isoformat(),
             "merge": merge,
+            "audio_only": audio_only,
             "filename": filename,
             "video_quality_index": video_quality,
             "audio_quality_index": audio_quality,
@@ -769,7 +772,7 @@ async def download_video(
         # 提交到线程池
         future = thread_pool.submit(
             download_video_task,
-            task_id, url, cookies, merge, filename, video_quality, audio_quality
+            task_id, url, cookies, merge, audio_only, filename, video_quality, audio_quality
         )
         update_task_status(task_id, future=future)
         
@@ -778,6 +781,7 @@ async def download_video(
 任务ID: {task_id}
 视频URL: {url}
 合并模式: {'是' if merge else '否'}
+仅音频: {'是' if audio_only else '否'}
 视频质量索引: {video_quality}
 音频质量索引: {audio_quality}
 自定义文件名: {filename if filename else '使用默认名称'}
@@ -794,7 +798,7 @@ async def download_video(
     except Exception as e:
         return PlainTextResponse(f"服务器错误: {str(e)}", status_code=500)
 
-def download_video_task(task_id, url, cookies, merge, filename, video_quality_index=0, audio_quality_index=0):
+def download_video_task(task_id, url, cookies, merge, audio_only, filename, video_quality_index=0, audio_quality_index=0):
     """线程池中执行的下载任务"""
     try:
         # 更新任务状态
@@ -837,7 +841,8 @@ def download_video_task(task_id, url, cookies, merge, filename, video_quality_in
                 video_quality_index=video_quality_index,
                 audio_quality_index=audio_quality_index,
                 filename=filename,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
+                audio_only=audio_only,
             )
             
             if result and isinstance(result, tuple) and len(result) == 2:

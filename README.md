@@ -121,8 +121,8 @@ curl "http://127.0.0.1:8000/api/download/status/<task_id>"
 # 4) 获取文件
 curl -O "http://127.0.0.1:8000/api/download/file/<task_id>"
 
-# 5) 仅下载音频（语音模式可用）
-curl "http://127.0.0.1:8000/api/video/download?url=https://www.bilibili.com/video/BVxxxx&merge=false"
+# 5) 仅下载音频（不会下载视频流，更快）
+curl "http://127.0.0.1:8000/api/video/download?url=https://www.bilibili.com/video/BVxxxx&merge=false&audio_only=true"
 curl -O "http://127.0.0.1:8000/api/download/audio/<task_id>"
 
 # 6) 截取音频前 N 秒（例如 60 秒）

@@ -956,7 +956,17 @@ def get_video_quality_options(url, cookies=None):
     except Exception as e:
         return None
 
-def select_quality_and_download(url, cookies=None, output_dir="downloads", merge=True, video_quality_index=0, audio_quality_index=0, filename=None, progress_callback=None):
+def select_quality_and_download(
+    url,
+    cookies=None,
+    output_dir="downloads",
+    merge=True,
+    video_quality_index=0,
+    audio_quality_index=0,
+    filename=None,
+    progress_callback=None,
+    audio_only=False,
+):
     """
     选择视频质量并下载（API版本）
     
@@ -968,6 +978,7 @@ def select_quality_and_download(url, cookies=None, output_dir="downloads", merge
         video_quality_index (int): 视频质量索引，0表示最高质量
         audio_quality_index (int): 音频质量索引，0表示最高质量
         progress_callback (function): 进度回调函数，接收(current, total, message)参数
+        audio_only (bool): 仅下载音频（仅在 merge=False 时生效）
     
     Returns:
         str or tuple: 如果merge=True返回合并后的文件路径，否则返回(视频路径, 音频路径)
@@ -1089,17 +1100,32 @@ def select_quality_and_download(url, cookies=None, output_dir="downloads", merge
             # 如果是Hi-Res音质，使用flac扩展名
             audio_extension = ".flac" if selected_audio['quality'] == 30251 else ".m4a"
             audio_path = os.path.join(output_dir, f"{output_filename}_{audio_quality_name}_audio{audio_extension}")
-            
+
+            # 仅下载音频
+            if audio_only:
+                if progress_callback:
+                    progress_callback(40, 100, "正在下载音频流...")
+                audio_success = download_stream(selected_audio['url'], audio_path, headers, progress_callback)
+                if audio_success:
+                    if progress_callback:
+                        progress_callback(100, 100, "音频文件下载完成")
+                    return None, audio_path
+                if os.path.exists(audio_path):
+                    os.remove(audio_path)
+                if progress_callback:
+                    progress_callback(0, 100, "音频下载失败")
+                return None, None
+
             # 下载视频流
             if progress_callback:
                 progress_callback(30, 100, "正在下载视频流...")
             video_success = download_stream(selected_video['url'], video_path, headers, progress_callback)
-            
+
             # 下载音频流
             if progress_callback:
                 progress_callback(70, 100, "正在下载音频流...")
             audio_success = download_stream(selected_audio['url'], audio_path, headers, progress_callback)
-            
+
             if video_success and audio_success:
                 if progress_callback:
                     progress_callback(100, 100, "视频和音频文件下载完成")
