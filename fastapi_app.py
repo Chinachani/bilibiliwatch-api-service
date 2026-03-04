@@ -979,7 +979,7 @@ async def download_file(task_id: str):
         raise HTTPException(status_code=404, detail="文件不存在")
 
 @app.get("/api/download/audio/{task_id}", tags=["下载管理"], summary="下载已完成任务的音频文件")
-async def download_audio_file(task_id: str):
+async def download_audio_file(task_id: str, max_sec: int = Query(0, ge=0, le=7200, description="仅返回前N秒音频，0=不截断")):
     task = get_task_status(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
@@ -990,12 +990,46 @@ async def download_audio_file(task_id: str):
         raise HTTPException(status_code=404, detail="音频文件不存在（该任务可能是合并模式）")
     if not os.path.exists(audio_path):
         raise HTTPException(status_code=404, detail="音频文件不存在")
-    filename = os.path.basename(audio_path)
-    return FileResponse(
-        path=audio_path,
-        filename=filename,
-        media_type='application/octet-stream'
-    )
+    output_path = audio_path
+    if max_sec > 0:
+        base_name = os.path.splitext(os.path.basename(audio_path))[0]
+        clip_filename = f"{base_name}_clip_{max_sec}s.m4a"
+        clip_path = os.path.join(DOWNLOAD_DIR, clip_filename)
+        if not os.path.exists(clip_path):
+            cmd_copy = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                audio_path,
+                "-t",
+                str(max_sec),
+                "-vn",
+                "-c:a",
+                "copy",
+                clip_path,
+            ]
+            result = subprocess.run(cmd_copy, capture_output=True, text=True)
+            if result.returncode != 0 or not os.path.exists(clip_path):
+                cmd_transcode = [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    audio_path,
+                    "-t",
+                    str(max_sec),
+                    "-vn",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "128k",
+                    clip_path,
+                ]
+                result = subprocess.run(cmd_transcode, capture_output=True, text=True)
+                if result.returncode != 0 or not os.path.exists(clip_path):
+                    raise HTTPException(status_code=500, detail="截断音频失败")
+        output_path = clip_path
+    filename = os.path.basename(output_path)
+    return FileResponse(path=output_path, filename=filename, media_type='application/octet-stream')
 
 @app.get("/api/download/merge/{task_id}", tags=["下载管理"], summary="合并视频和音频")
 async def download_merged_file(task_id: str):
