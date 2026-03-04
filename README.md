@@ -8,7 +8,7 @@
 ## 功能概览
 - 视频信息解析：`/api/video/info`
 - 质量列表：`/api/video/quality`、`/api/video/quality/json`
-- 下载任务：`/api/video/download`、`/api/download/status/{id}`、`/api/download/file/{id}`
+- 下载任务：`/api/video/download`、`/api/download/status/{id}`、`/api/download/file/{id}`、`/api/download/audio/{id}`
 - 合并音视频：`/api/download/merge/{id}`
 - 任务列表与取消：`/api/tasks`、`/api/tasks/json`、`/api/tasks/cancel/{id}`
 - 删除任务：`/api/tasks/remove/{id}`
@@ -120,4 +120,8 @@ curl "http://127.0.0.1:8000/api/download/status/<task_id>"
 
 # 4) 获取文件
 curl -O "http://127.0.0.1:8000/api/download/file/<task_id>"
+
+# 5) 仅下载音频（语音模式可用）
+curl "http://127.0.0.1:8000/api/video/download?url=https://www.bilibili.com/video/BVxxxx&merge=false"
+curl -O "http://127.0.0.1:8000/api/download/audio/<task_id>"
 ```

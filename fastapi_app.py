@@ -392,6 +392,7 @@ async def index():
   GET  /api/video/download         - 下载视频
   GET  /api/download/status/<id>   - 查询下载状态
   GET  /api/download/file/<id>     - 下载文件
+  GET  /api/download/audio/<id>    - 下载音频文件
   GET  /api/download/merge/<id>    - 合并下载视频音频
   GET  /api/tasks                  - 获取所有任务
 
@@ -923,7 +924,7 @@ async def get_download_status(task_id: str):
             text_result += f"\n\n下载链接: /api/download/file/{task_id}"
         elif not task['merge'] and task.get('video_path') and task.get('audio_path'):
             text_result += f"\n\n文件信息:\n  视频文件: {task['video_path']}\n  音频文件: {task['audio_path']}"
-            text_result += f"\n\n下载链接:\n  视频: /api/download/file/{task_id}\n  合并: /api/download/merge/{task_id}"
+            text_result += f"\n\n下载链接:\n  视频: /api/download/file/{task_id}\n  音频: /api/download/audio/{task_id}\n  合并: /api/download/merge/{task_id}"
     
     # 添加错误信息
     if task['status'] == 'failed' and task.get('error'):
@@ -976,6 +977,25 @@ async def download_file(task_id: str):
     
     else:
         raise HTTPException(status_code=404, detail="文件不存在")
+
+@app.get("/api/download/audio/{task_id}", tags=["下载管理"], summary="下载已完成任务的音频文件")
+async def download_audio_file(task_id: str):
+    task = get_task_status(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if task["status"] != "completed":
+        raise HTTPException(status_code=400, detail="任务尚未完成")
+    audio_path = task.get("audio_path")
+    if not audio_path:
+        raise HTTPException(status_code=404, detail="音频文件不存在（该任务可能是合并模式）")
+    if not os.path.exists(audio_path):
+        raise HTTPException(status_code=404, detail="音频文件不存在")
+    filename = os.path.basename(audio_path)
+    return FileResponse(
+        path=audio_path,
+        filename=filename,
+        media_type='application/octet-stream'
+    )
 
 @app.get("/api/download/merge/{task_id}", tags=["下载管理"], summary="合并视频和音频")
 async def download_merged_file(task_id: str):
@@ -1109,6 +1129,7 @@ async def get_all_tasks():
     text_result += "=== 操作说明 ===\n"
     text_result += "查询任务状态: /api/download/status/<task_id>\n"
     text_result += "下载文件: /api/download/file/<task_id>\n"
+    text_result += "下载音频: /api/download/audio/<task_id>\n"
     text_result += "合并文件: /api/download/merge/<task_id>\n"
     
     return PlainTextResponse(text_result)
@@ -1192,6 +1213,7 @@ async def not_found_handler(request, exc):
   GET  /api/video/download         - 下载视频
   GET  /api/download/status/<id>   - 查询下载状态
   GET  /api/download/file/<id>     - 下载文件
+  GET  /api/download/audio/<id>    - 下载音频文件
   GET  /api/download/merge/<id>    - 合并下载视频音频
   GET  /api/tasks                  - 获取所有任务
 
@@ -1222,6 +1244,7 @@ if __name__ == "__main__":
     print("  GET  /api/video/download         - 下载视频")
     print("  GET  /api/download/status/<id>   - 查询下载状态")
     print("  GET  /api/download/file/<id>     - 下载文件")
+    print("  GET  /api/download/audio/<id>    - 下载音频文件")
     print("  GET  /api/download/merge/<id>    - 合并下载视频音频")
     print("  GET  /api/tasks                  - 获取所有任务")
     print("\n服务器将在 http://localhost:8000 启动")
